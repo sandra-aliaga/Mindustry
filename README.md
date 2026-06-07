@@ -75,7 +75,7 @@ After building, the output .JAR file should be in `/desktop/build/libs/Mindustry
 Post feature requests and feedback [here](https://github.com/Anuken/Mindustry-Suggestions/issues/new/choose).
 
 ## Implementación de CI
-Este proyecto tiene implementación de CI con Github Actions.
+Este proyecto tiene implementación de CI con ayuda de Github Actions.
 
 ## Downloads
 
