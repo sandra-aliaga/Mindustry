@@ -1,0 +1,47 @@
+name: Sincronizar Tablero con Etiquetas
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # Se ejecuta automáticamente cada 5 minutos
+  workflow_dispatch:      # Botón para ejecutarlo manualmente desde GitHub
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sincronizar columnas con labels
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_PAT }}
+        run: |
+          # ATENCIÓN: Cambia el '1' por el número de tu proyecto si es diferente.
+          # (Lo encuentras al final de la URL de tu tablero de Projects: .../projects/1)
+          PROJECT_NUMBER=1
+          OWNER="sandra-aliaga"
+          REPO="sandra-aliaga/Mindustry"
+          
+          echo "Obteniendo datos del tablero..."
+          ITEMS=$(gh project item-list $PROJECT_NUMBER --owner $OWNER --format json)
+          
+          echo "$ITEMS" | jq -c '.items[]' | while read item; do
+            TYPE=$(echo "$item" | jq -r '.type')
+            
+            # Solo procesamos Issues reales (ignoramos notas o borradores vacíos)
+            if [ "$TYPE" != "ISSUE" ]; then continue; fi
+            
+            ISSUE_NUM=$(echo "$item" | jq -r '.content.number')
+            STATUS=$(echo "$item" | jq -r '.status // empty')
+            
+            LABEL=""
+            # Mapeamos los nombres exactos de tus columnas a etiquetas
+            case "$STATUS" in
+              "Sprint Actual") LABEL="sprint" ;;
+              "In Progress") LABEL="progress" ;;
+              "In Review") LABEL="review" ;;
+            esac
+            
+            if [ -n "$LABEL" ]; then
+              echo "Añadiendo etiqueta '$LABEL' al Issue #$ISSUE_NUM"
+              # Asignamos la etiqueta usando la CLI nativa de GitHub
+              gh issue edit $ISSUE_NUM --repo $REPO --add-label "$LABEL" > /dev/null 2>&1 || true
+            fi
+          done
