@@ -41,3 +41,26 @@ jobs:
             tests/build/reports/jacoco/
             tests/build/reports/tests/test/
           if-no-files-found: warn
+
+      - name: Update coverage on external Pages repo
+        run: |
+          TOKEN="${{ secrets.PROJECT_PAT }}"
+          if [ -z "$TOKEN" ]; then
+            TOKEN="${{ secrets.API_TOKEN_GITHUB }}"
+          fi
+          if [ -z "$TOKEN" ]; then
+            TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          fi
+          
+          git config --global user.email "actions@github.com"
+          git config --global user.name "Github Actions"
+          
+          git clone https://x-access-token:${TOKEN}@github.com/psmindustry/psmindustry.git ../psmindustry
+          mkdir -p ../psmindustry/coverage-report
+          rm -rf ../psmindustry/coverage-report/*
+          cp -r tests/build/reports/jacoco/test/html/* ../psmindustry/coverage-report/
+          
+          cd ../psmindustry
+          git add .
+          git commit -m "Update coverage report from CI run #${{ github.run_number }}" || true
+          git push origin main || true
