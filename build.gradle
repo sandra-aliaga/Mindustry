@@ -33,6 +33,7 @@ plugins{
 
 allprojects{
     apply plugin: 'maven-publish'
+    apply plugin: 'jacoco'
 
     version = project.hasProperty("packageVersion") ? project.getProperty("packageVersion") : 'release'
     group = 'com.github.Anuken'
