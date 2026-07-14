@@ -1,0 +1,102 @@
+name: CD Final Pipeline
+
+on:
+  push:
+    tags:
+      - 'v1.0.0'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  release-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Fetch Arc
+        run: git clone --depth=1 --branch=master https://github.com/Anuken/Arc ../Arc
+
+      - name: Cache Gradle
+        uses: gradle/gradle-build-action@v2
+
+      - name: Build Desktop and Server
+        run: ./gradlew desktop:dist server:dist core:depsJar --stacktrace
+
+      - name: Run Tests and Generate Coverage
+        run: ./gradlew tests:test jacocoTestReport --stacktrace
+
+      - name: Compress Coverage Report
+        run: |
+          zip -r jacoco-coverage-report.zip tests/build/reports/jacoco/test/html/
+
+      - name: Upload Desktop JAR to Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: desktop/build/libs/Mindustry.jar
+          asset_name: Mindustry-desktop.jar
+          tag: ${{ github.ref }}
+          overwrite: true
+
+      - name: Upload Server JAR to Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: server/build/libs/server-release.jar
+          asset_name: Mindustry-server.jar
+          tag: ${{ github.ref }}
+          overwrite: true
+
+      - name: Upload Dependency JAR to Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: core/build/libs/core-release-deps.jar
+          asset_name: dependencies.jar
+          tag: ${{ github.ref }}
+          overwrite: true
+
+      - name: Upload Coverage XML to Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: tests/build/reports/jacoco/test/jacocoTestReport.xml
+          asset_name: jacoco-coverage-report.xml
+          tag: ${{ github.ref }}
+          overwrite: true
+
+      - name: Upload Coverage ZIP to Release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: jacoco-coverage-report.zip
+          asset_name: jacoco-coverage-report.zip
+          tag: ${{ github.ref }}
+          overwrite: true
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: tests/build/reports/jacoco/test/html/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
