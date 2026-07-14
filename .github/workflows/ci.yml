@@ -29,3 +29,15 @@ jobs:
 
       - name: Test
         run: ./gradlew tests:test
+
+      - name: Quality analysis (JaCoCo coverage)
+        run: ./gradlew jacocoTestReport --stacktrace
+
+      - name: Upload coverage report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report
+          path: |
+            tests/build/reports/jacoco/
+            tests/build/reports/tests/test/
+          if-no-files-found: warn
